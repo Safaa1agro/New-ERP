@@ -1,0 +1,24 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start Dev Server",
+      "type": "shell",
+      "command": "npm run dev",
+      "isBackground": true,
+      "problemMatcher": ["$nextjs"]
+    },
+    {
+      "label": "Supabase Start",
+      "type": "shell",
+      "command": "npx supabase start",
+      "problemMatcher": []
+    },
+    {
+      "label": "Apply Database Migrations",
+      "type": "shell",
+      "command": "npx supabase db reset",
+      "problemMatcher": []
+    }
+  ]
+}

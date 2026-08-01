@@ -1,0 +1,37 @@
+{
+  "name": "Safaa Agro Farms ERP - Development Container",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspace",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.codeActionsOnSave": {
+          "source.organizeImports": "explicit",
+          "source.fixAll.eslint": "explicit"
+        },
+        "typescript.tsdk": "node_modules/typescript/lib",
+        "tailwindCSS.experimental.classRegex": [
+          ["cva\\(([^)]*)\\)", "[\"'`]([^\"'`]* chính)[\"'`]"],
+          ["cn\\(([^)]*)\\)", "(?:'|\"|`)([^'\"`]*)(?:'|\"|`)"]
+        ]
+      },
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "ckabrhel.vscode-supabase-snippets",
+        "ms-azuretools.vscode-docker",
+        "eamodio.gitlens",
+        "prisma.prisma",
+        "tamasfe.even-better-toml",
+        "humao.rest-client"
+      ]
+    }
+  },
+  "remoteUser": "node",
+  "postCreateCommand": "npm install && supabase init --workdir ./supabase",
+  "forwardPorts": [3000, 54321, 54323]
+}

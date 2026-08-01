@@ -1,0 +1,16 @@
+# Dependency packages (This is what is causing the 10,000+ files count)
+node_modules/
+
+# Next.js build output
+.next/
+out/
+build/
+
+# Environment keys & local secrets
+.env
+.env.local
+.env*.local
+
+# Logs and OS files
+*.log
+.DS_Store
