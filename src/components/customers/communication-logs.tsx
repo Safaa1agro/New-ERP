@@ -10,7 +10,8 @@ import {
   User, 
   X, 
   ArrowDownLeft, 
-  ArrowUpRight 
+  ArrowUpRight,
+  Calendar
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
@@ -64,7 +65,6 @@ export function CustomerCommLogs({
     try {
       const supabase = createClient();
       
-      // Clean payload strictly matching table columns
       const payload: Record<string, any> = {
         customer_id: activeCustomerId,
         channel: channel,
@@ -77,7 +77,7 @@ export function CustomerCommLogs({
         .from('customer_comm_logs')
         .insert([payload] as any);
 
-      // Automatic fallback if PostgREST cache still rejects the 'direction' key
+      // Automatic fallback if PostgREST cache rejects the 'direction' key
       if (error) {
         if (error.message?.includes('direction') || error.message?.includes('schema cache')) {
           delete payload.direction;
@@ -96,7 +96,6 @@ export function CustomerCommLogs({
       setTargetCustomerId('');
       setDirection('INBOUND');
       
-      // Refresh parent dataset
       if (onLogAdded) onLogAdded();
     } catch (err: any) {
       console.error('Failed to insert comm log:', err);
@@ -109,24 +108,25 @@ export function CustomerCommLogs({
   const getChannelIcon = (type: string) => {
     switch (type) {
       case 'WHATSAPP':
-        return <MessageSquare className="h-4 w-4 text-emerald-400" />;
+        return <MessageSquare className="h-3.5 w-3.5 text-emerald-400" />;
       case 'CALL':
-        return <Phone className="h-4 w-4 text-sky-400" />;
+        return <Phone className="h-3.5 w-3.5 text-sky-400" />;
       case 'EMAIL':
-        return <Mail className="h-4 w-4 text-amber-400" />;
+        return <Mail className="h-3.5 w-3.5 text-amber-400" />;
       default:
-        return <FileText className="h-4 w-4 text-purple-400" />;
+        return <FileText className="h-3.5 w-3.5 text-purple-400" />;
     }
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 shadow-sm">
-      <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+    <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-3 shadow-sm">
+      {/* Header */}
+      <div className="flex justify-between items-center border-b border-slate-800 pb-2">
         <div>
-          <h3 className="text-sm font-bold text-white flex items-center gap-2">
+          <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
             <MessageSquare className="h-4 w-4 text-emerald-400" /> Customer Communication & Activity Logs
           </h3>
-          <p className="text-[11px] text-slate-400">
+          <p className="text-[10px] text-slate-400">
             Track price discussions, WhatsApp interactions, customer replies, and contract updates
           </p>
         </div>
@@ -135,71 +135,72 @@ export function CustomerCommLogs({
             if (selectedCustomerId) setTargetCustomerId(selectedCustomerId);
             setIsModalOpen(true);
           }}
-          className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+          className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-2.5 py-1 rounded text-xs font-semibold transition-colors"
         >
           <PlusCircle className="h-3.5 w-3.5 text-emerald-400" /> Log Activity
         </button>
       </div>
 
-      {/* Timeline Feed */}
-      <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
-        {logs.length === 0 ? (
-          <div className="p-6 text-center text-xs text-slate-500 border border-dashed border-slate-800 rounded-lg">
-            No activity logged yet. Click "+ Log Activity" to record a conversation.
-          </div>
-        ) : (
-          logs.map((log) => {
+      {/* Timeline Feed - Fixed Height Scroll Container */}
+      {logs.length === 0 ? (
+        <div className="p-4 text-center text-xs text-slate-500 border border-dashed border-slate-800/80 rounded-lg">
+          No activity logged yet. Click "+ Log Activity" to record a conversation.
+        </div>
+      ) : (
+        <div className="max-h-[260px] overflow-y-auto space-y-1.5 pr-1">
+          {logs.map((log) => {
             const isInbound = log.direction === 'INBOUND';
 
             return (
-              <div key={log.id} className="bg-slate-800/40 border border-slate-800 p-3 rounded-lg text-xs flex items-start gap-3 hover:border-slate-700 transition-colors">
-                <div className="p-2 bg-slate-800 rounded-md mt-0.5 border border-slate-700 shrink-0">
-                  {getChannelIcon(log.channel)}
-                </div>
-                
-                <div className="flex-1 space-y-1">
-                  <div className="flex justify-between items-center flex-wrap gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-white">{log.customer_name}</span>
-
-                      {/* Direction Badge */}
-                      <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${
-                          isInbound
-                            ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-                            : 'bg-sky-500/10 text-sky-400 border-sky-500/30'
-                        }`}
-                      >
-                        {isInbound ? (
-                          <>
-                            <ArrowDownLeft className="h-3 w-3" /> Customer Reply
-                          </>
-                        ) : (
-                          <>
-                            <ArrowUpRight className="h-3 w-3" /> Safaa Response
-                          </>
-                        )}
-                      </span>
+              <div 
+                key={log.id} 
+                className="bg-slate-950/70 border border-slate-800 hover:border-slate-700 p-2.5 rounded-lg text-xs space-y-1 transition-colors"
+              >
+                <div className="flex justify-between items-center flex-wrap gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <div className="p-1 bg-slate-900 rounded border border-slate-800 shrink-0">
+                      {getChannelIcon(log.channel)}
                     </div>
+                    <span className="font-bold text-white text-[11px]">{log.customer_name}</span>
 
-                    <span className="text-[10px] text-slate-500 shrink-0 font-mono">
-                      {new Date(log.created_at).toLocaleDateString()}
+                    {/* Direction Badge */}
+                    <span
+                      className={`inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold uppercase tracking-wider border ${
+                        isInbound
+                          ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                          : 'bg-sky-500/10 text-sky-400 border-sky-500/30'
+                      }`}
+                    >
+                      {isInbound ? (
+                        <>
+                          <ArrowDownLeft className="h-2.5 w-2.5" /> Customer Reply
+                        </>
+                      ) : (
+                        <>
+                          <ArrowUpRight className="h-2.5 w-2.5" /> Safaa Response
+                        </>
+                      )}
                     </span>
                   </div>
 
-                  <p className="text-slate-300 mt-1 leading-relaxed bg-slate-900/40 p-2 rounded border border-slate-800/50">
-                    {log.summary}
-                  </p>
-
-                  <div className="mt-2 flex items-center gap-2 text-[10px] text-slate-400 pt-0.5">
-                    <User className="h-3 w-3 text-slate-500" /> Logged by: {log.logged_by || 'System Administrator'}
+                  <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono shrink-0">
+                    <span className="flex items-center gap-0.5">
+                      <User className="h-2.5 w-2.5 text-slate-500" /> {log.logged_by || 'System Admin'}
+                    </span>
+                    <span className="flex items-center gap-0.5">
+                      <Calendar className="h-2.5 w-2.5 text-slate-500" /> {new Date(log.created_at).toLocaleDateString()}
+                    </span>
                   </div>
                 </div>
+
+                <p className="text-slate-300 text-[11px] leading-snug bg-slate-900/60 p-2 rounded border border-slate-800/50 line-clamp-2">
+                  {log.summary}
+                </p>
               </div>
             );
-          })
-        )}
-      </div>
+          })}
+        </div>
+      )}
 
       {/* Modal: Add Communication Log */}
       {isModalOpen && (
@@ -243,13 +244,13 @@ export function CustomerCommLogs({
                   className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white outline-none focus:border-emerald-500"
                 >
                   <option value="WHATSAPP">WhatsApp Message</option>
-                  <option value="CALL font-medium">Phone Call</option>
+                  <option value="CALL">Phone Call</option>
                   <option value="EMAIL">Email</option>
                   <option value="MEETING">In-Person / Virtual Meeting</option>
                 </select>
               </div>
 
-              {/* Interaction Direction / Flow */}
+              {/* Interaction Direction */}
               <div>
                 <label className="block text-slate-400 mb-1">Interaction Flow / Direction</label>
                 <select

@@ -40,29 +40,30 @@ export function CRMPipelineBoard({ opportunities = [], onRefresh }: Props) {
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 overflow-x-auto">
-      {/* 6-Column Responsive Grid that auto-fits display width */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5 min-w-[950px]">
-        {STAGES.map((stage) => {
-          const stageOpps = opportunities.filter((o) => o.stage === stage.key);
-          const totalValue = stageOpps.reduce(
-            (acc, curr) =>
-              acc + (Number(curr.estimated_value_usd || curr.estimated_annual_value_usd) || 0),
-            0
-          );
+    <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 overflow-x-auto">
+      {/* SINGLE Scroll Container for the Entire Board */}
+      <div className="max-h-[420px] overflow-y-auto pr-1">
+        {/* 6-Column Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5 min-w-[950px] align-start">
+          {STAGES.map((stage) => {
+            const stageOpps = opportunities.filter((o) => o.stage === stage.key);
+            const totalValue = stageOpps.reduce(
+              (acc, curr) =>
+                acc + (Number(curr.estimated_value_usd || curr.estimated_annual_value_usd) || 0),
+              0
+            );
 
-          return (
-            <div
-              key={stage.key}
-              className="bg-slate-950/60 rounded-lg p-2.5 border border-slate-800/80 flex flex-col justify-between"
-            >
-              <div>
-                {/* Column Header */}
-                <div className={`border-b-2 ${stage.color} pb-1.5 mb-2 flex justify-between items-center`}>
-                  <span className="text-[10px] font-black tracking-wider text-slate-300 truncate">
+            return (
+              <div
+                key={stage.key}
+                className="bg-slate-950/60 rounded-lg p-2 border border-slate-800/80 flex flex-col h-full"
+              >
+                {/* Column Header - Fixed Wrapping to stop cropping */}
+                <div className={`border-b-2 ${stage.color} pb-1.5 mb-1.5 flex justify-between items-start gap-1 min-h-[32px]`}>
+                  <span className="text-[10px] font-black tracking-wider text-slate-300 leading-tight">
                     {stage.label}
                   </span>
-                  <span className="text-[9px] bg-slate-800 text-slate-400 font-bold px-1.5 py-0.5 rounded-full ml-1">
+                  <span className="text-[9px] bg-slate-800 text-slate-400 font-bold px-1.5 py-0.5 rounded-full shrink-0">
                     {stageOpps.length}
                   </span>
                 </div>
@@ -72,8 +73,8 @@ export function CRMPipelineBoard({ opportunities = [], onRefresh }: Props) {
                   Total: <span className="text-emerald-400 font-semibold">${totalValue.toLocaleString()}</span>
                 </div>
 
-                {/* Cards Container */}
-                <div className="space-y-2">
+                {/* Deal Cards Container (Full width, no individual scrollbar) */}
+                <div className="space-y-2 flex-1">
                   {stageOpps.length === 0 ? (
                     <div className="h-16 border border-dashed border-slate-800/60 rounded-md flex items-center justify-center text-[10px] text-slate-600">
                       Empty Stage
@@ -125,9 +126,9 @@ export function CRMPipelineBoard({ opportunities = [], onRefresh }: Props) {
                   )}
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );

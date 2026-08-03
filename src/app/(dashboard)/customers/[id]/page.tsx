@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, use } from 'react';
 import Link from 'next/link';
 import { 
   Building2, 
@@ -35,6 +35,7 @@ interface Contact {
   id: string;
   customer_id: string;
   name: string;
+  contact_name?: string;
   designation: string;
   email: string;
   phone: string;
@@ -69,11 +70,32 @@ interface CRMDeal {
   id: string;
   title: string;
   value: number;
+  deal_value?: number;
   stage: string;
 }
 
-export default function CustomerDetailPage({ params }: { params: { id: string } }) {
-  const customerId = params.id;
+interface CustomerMaster {
+  id: string;
+  company_name: string;
+  customer_code: string;
+  registration_no: string;
+  country: string;
+  city: string;
+  credit_limit: number;
+  payment_terms: string;
+  status: string;
+  sfda_registration_no?: string;
+}
+
+export default function CustomerDetailPage({ 
+  params 
+}: { 
+  params: Promise<{ id: string }> | { id: string } 
+}) {
+  // Safe unwrapping for Next.js params
+  const resolvedParams = typeof (params as any)?.then === 'function' ? use(params as Promise<{ id: string }>) : (params as { id: string });
+  const customerId = resolvedParams.id;
+
   const supabase = createClient();
   const db = supabase as any;
 
@@ -120,16 +142,18 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
     status: 'CONFIRMED' as TradeOrder['status']
   });
 
-  // Main Datasets
-  const [customer, setCustomer] = useState({
+  // Dynamic Customer Data State
+  const [customer, setCustomer] = useState<CustomerMaster>({
     id: customerId,
-    company_name: 'Lulu Hypermarket KSA Co.',
-    registration_no: 'CR-7019283411',
-    country: 'Saudi Arabia',
-    city: 'Riyadh',
-    credit_limit: 500000,
-    payment_terms: 'LC_AT_SIGHT (SAR)',
-    kyc_status: 'VERIFIED'
+    company_name: '',
+    customer_code: '',
+    registration_no: '',
+    country: '',
+    city: '',
+    credit_limit: 0,
+    payment_terms: '',
+    status: 'PENDING',
+    sfda_registration_no: ''
   });
 
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -141,18 +165,23 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
   const fetchAllCustomerData = useCallback(async () => {
     setLoading(true);
     try {
-      // 1. Synchronize Master Customer record
-      const { data: custData } = await db.from('customers').select('*').eq('id', customerId).maybeSingle();
-      if (custData) {
-        setCustomer(prev => ({
-          ...prev,
-          company_name: custData.company_name || custData.name || prev.company_name,
-          country: custData.country || prev.country,
-          city: custData.city || prev.city,
-          registration_no: custData.tax_id || custData.registration_no || prev.registration_no,
-          credit_limit: custData.credit_limit ? Number(custData.credit_limit) : prev.credit_limit,
-          payment_terms: custData.payment_terms || prev.payment_terms,
-        }));
+      // 1. Synchronize Master Customer record dynamically
+      const { data: custData, error: custErr } = await db.from('customers').select('*').eq('id', customerId).maybeSingle();
+      if (!custErr && custData) {
+        setCustomer({
+          id: custData.id || customerId,
+          company_name: custData.company_name || custData.name || 'Unnamed Importer',
+          customer_code: custData.customer_code || '',
+          country: custData.primary_country || custData.country || 'Unspecified',
+          city: custData.destination_port || custData.city || '',
+          registration_no: custData.tax_vat_number || custData.registration_no || custData.tax_id || 'N/A',
+          credit_limit: custData.credit_limit_usd !== undefined && custData.credit_limit_usd !== null 
+            ? Number(custData.credit_limit_usd) 
+            : (custData.credit_limit ? Number(custData.credit_limit) : 0),
+          payment_terms: custData.payment_terms || 'N/A',
+          status: custData.status || custData.kyc_status || 'PENDING',
+          sfda_registration_no: custData.sfda_registration_no || ''
+        });
       }
 
       // 2. Fetch Customer Contacts
@@ -162,18 +191,16 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
       }
 
       // 3. Fetch KYC Documents
-      const { data: kData } = await db.from('kyc_documents').select('*').eq('customer_id', customerId).order('created_at', { ascending: false });
-      if (kData) setKycDocs(kData as KYCDocument[]);
+      const { data: kData, error: kErr } = await db.from('kyc_documents').select('*').eq('customer_id', customerId).order('created_at', { ascending: false });
+      if (!kErr && kData) setKycDocs(kData as KYCDocument[]);
 
       // 4. Fetch Sales Orders
-      const { data: oData } = await db.from('sales_orders').select('*').eq('customer_id', customerId).order('created_at', { ascending: false });
-      if (oData) setTradeOrders(oData as TradeOrder[]);
+      const { data: oData, error: oErr } = await db.from('sales_orders').select('*').eq('customer_id', customerId).order('created_at', { ascending: false });
+      if (!oErr && oData) setTradeOrders(oData as TradeOrder[]);
 
-      // 5. Fetch CRM Deals / Contracts (Synchronizes CRM pipeline with 360° view)
-      const { data: crmData } = await db.from('crm_deals').select('*').eq('customer_id', customerId);
-      if (crmData) {
-        setCrmDeals(crmData as CRMDeal[]);
-      }
+      // 5. Fetch CRM Deals / Contracts
+      const { data: crmData, error: crmErr } = await db.from('crm_deals').select('*').eq('customer_id', customerId);
+      if (!crmErr && crmData) setCrmDeals(crmData as CRMDeal[]);
 
     } catch (err) {
       console.error('Error synchronizing Supabase customer datasets:', err);
@@ -186,21 +213,17 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
     fetchAllCustomerData();
   }, [fetchAllCustomerData]);
 
-  // Synchronized Total Trade Volume (Sales Orders + CRM Signed Contracts)
+  // Synchronized Trade Calculations
   const salesOrdersVolume = tradeOrders
     .filter(o => o.status !== 'CANCELLED')
     .reduce((sum, order) => sum + Number(order.total_value || 0), 0);
 
   const crmSignedVolume = crmDeals
     .filter(d => d.stage === 'CONTRACT_SIGNED' || d.stage === 'WON')
-    .reduce((sum, deal) => sum + Number(deal.value || 0), 0);
+    .reduce((sum, deal) => sum + Number(deal.value || deal.deal_value || 0), 0);
 
-  // Fallback sync with CRM default deal if table isn't populated yet
-  const totalVolumeUSD = (salesOrdersVolume > 0 || crmSignedVolume > 0) 
-    ? salesOrdersVolume + crmSignedVolume 
-    : 320500; // Includes $320,000 CRM Signed Contract + $500 RFQ Order from CRM Pipeline
-
-  const activeOrdersCount = tradeOrders.filter(o => ['IN_TRANSIT', 'PROCESSING', 'CONFIRMED'].includes(o.status)).length || 1;
+  const totalVolumeUSD = salesOrdersVolume + crmSignedVolume;
+  const activeOrdersCount = tradeOrders.filter(o => ['IN_TRANSIT', 'PROCESSING', 'CONFIRMED'].includes(o.status)).length;
 
   const getTierBadge = (volume: number) => {
     if (volume >= 100000) return { label: 'VIP CUSTOMER', class: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' };
@@ -208,14 +231,33 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
     return { label: 'STANDARD CUSTOMER', class: 'bg-slate-500/10 text-slate-400 border-slate-500/30' };
   };
 
+  const getStatusBadge = (statusStr: string) => {
+    const clean = (statusStr || '').toUpperCase();
+    switch (clean) {
+      case 'ACTIVE':
+        return { label: 'VERIFIED & ACTIVE', class: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' };
+      case 'UNDER_VERIFICATION':
+        return { label: 'UNDER VERIFICATION', class: 'bg-amber-500/10 text-amber-400 border-amber-500/30' };
+      case 'OUTREACHED':
+        return { label: 'OUTREACHED', class: 'bg-sky-500/10 text-sky-400 border-sky-500/30' };
+      case 'NEGOTIATIONS':
+        return { label: 'IN NEGOTIATIONS', class: 'bg-purple-500/10 text-purple-400 border-purple-500/30' };
+      case 'UNDER_COMPLIANCE':
+        return { label: 'UNDER COMPLIANCE', class: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30' };
+      default:
+        return { label: clean.replace(/_/g, ' ') || 'PENDING', class: 'bg-slate-800 text-slate-400 border-slate-700' };
+    }
+  };
+
   const currentTier = getTierBadge(totalVolumeUSD);
+  const statusInfo = getStatusBadge(customer.status);
 
   // ----------------------- CONTACT ACTIONS -----------------------
   const openContactModal = (contact?: Contact) => {
     if (contact) {
       setEditingContact(contact);
       setContactForm({
-        name: contact.name || '',
+        name: contact.name || contact.contact_name || '',
         designation: contact.designation || '',
         email: contact.email || '',
         phone: contact.phone || '',
@@ -229,17 +271,17 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
     setIsContactModalOpen(true);
   };
 
- const handleSaveContact = async (e: React.FormEvent) => {
+  const handleSaveContact = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const payload = {
         customer_id: customerId,
         name: contactForm.name.trim(),
-        contact_name: contactForm.name.trim(),       // Legacy field safeguard
+        contact_name: contactForm.name.trim(),
         designation: contactForm.designation.trim(),
         email: contactForm.email.trim(),
         phone: contactForm.phone.trim(),
-        phone_whatsapp: contactForm.phone.trim(),    // Legacy field safeguard
+        phone_whatsapp: contactForm.phone.trim(),
         department: contactForm.department,
         is_primary: contactForm.is_primary
       };
@@ -261,7 +303,8 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
 
   const handleDeleteContact = async (id: string) => {
     if (confirm('Delete this contact person permanently?')) {
-      await db.from('customer_contacts').delete().eq('id', id);
+      const { error } = await db.from('customer_contacts').delete().eq('id', id);
+      if (error) alert(`Failed to delete contact: ${error.message}`);
       fetchAllCustomerData();
     }
   };
@@ -329,9 +372,11 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
     };
 
     if (editingKyc) {
-      await db.from('kyc_documents').update(payload).eq('id', editingKyc.id);
+      const { error } = await db.from('kyc_documents').update(payload).eq('id', editingKyc.id);
+      if (error) alert(`Error updating document: ${error.message}`);
     } else {
-      await db.from('kyc_documents').insert(payload);
+      const { error } = await db.from('kyc_documents').insert(payload);
+      if (error) alert(`Error saving document: ${error.message}`);
     }
 
     setIsKycModalOpen(false);
@@ -357,7 +402,8 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
       if (doc.file_path) {
         await supabase.storage.from('kyc-documents').remove([doc.file_path]);
       }
-      await db.from('kyc_documents').delete().eq('id', doc.id);
+      const { error } = await db.from('kyc_documents').delete().eq('id', doc.id);
+      if (error) alert(`Failed to delete document: ${error.message}`);
       fetchAllCustomerData();
     }
   };
@@ -401,9 +447,11 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
     };
 
     if (editingOrder) {
-      await db.from('sales_orders').update(payload).eq('id', editingOrder.id);
+      const { error } = await db.from('sales_orders').update(payload).eq('id', editingOrder.id);
+      if (error) alert(`Error updating order: ${error.message}`);
     } else {
-      await db.from('sales_orders').insert(payload);
+      const { error } = await db.from('sales_orders').insert(payload);
+      if (error) alert(`Error saving order: ${error.message}`);
     }
 
     setIsOrderModalOpen(false);
@@ -411,21 +459,22 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
   };
 
   const handleQuickStatusChange = async (orderId: string, newStatus: TradeOrder['status']) => {
-    await db.from('sales_orders').update({ status: newStatus }).eq('id', orderId);
+    const { error } = await db.from('sales_orders').update({ status: newStatus }).eq('id', orderId);
+    if (error) alert(`Failed to update status: ${error.message}`);
     fetchAllCustomerData();
   };
 
   const handleDeleteOrder = async (id: string) => {
     if (confirm('Delete this order entry from history?')) {
-      await db.from('sales_orders').delete().eq('id', id);
+      const { error } = await db.from('sales_orders').delete().eq('id', id);
+      if (error) alert(`Failed to delete order: ${error.message}`);
       fetchAllCustomerData();
     }
   };
 
- if (loading) {
+  if (loading) {
     return (
       <div className="w-full space-y-6 pt-8 md:pt-10 px-6 pb-8 text-slate-100 animate-pulse">
-        {/* Top Header Card Skeleton */}
         <div className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-6 flex justify-between items-center">
           <div className="space-y-3">
             <div className="h-6 w-72 bg-slate-800 rounded-md"></div>
@@ -434,30 +483,13 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
           <div className="h-10 w-32 bg-slate-800 rounded-lg"></div>
         </div>
 
-        {/* Key Metrics Grid Skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
             <div key={i} className="bg-slate-900/60 border border-slate-800/80 p-4 rounded-xl space-y-2">
               <div className="h-3 w-24 bg-slate-800/50 rounded"></div>
               <div className="h-7 w-32 bg-slate-800 rounded"></div>
             </div>
           ))}
-        </div>
-
-        {/* Content Section Skeleton */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="bg-slate-900/60 border border-slate-800/80 rounded-xl h-80 p-6 space-y-4">
-            <div className="h-5 w-40 bg-slate-800 rounded"></div>
-            <div className="h-4 w-full bg-slate-800/40 rounded"></div>
-            <div className="h-4 w-3/4 bg-slate-800/40 rounded"></div>
-            <div className="h-4 w-5/6 bg-slate-800/40 rounded"></div>
-          </div>
-          <div className="lg:col-span-2 bg-slate-900/60 border border-slate-800/80 rounded-xl h-80 p-6 space-y-4">
-            <div className="h-5 w-48 bg-slate-800 rounded"></div>
-            <div className="h-12 w-full bg-slate-800/30 rounded-lg"></div>
-            <div className="h-12 w-full bg-slate-800/30 rounded-lg"></div>
-            <div className="h-12 w-full bg-slate-800/30 rounded-lg"></div>
-          </div>
         </div>
       </div>
     );
@@ -466,23 +498,18 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
   return (
     <div className="w-full space-y-6 pt-8 md:pt-10 px-6 pb-8 text-slate-100">
       {/* Top Header */}
-<div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-800 pb-5">
-  <div className="space-y-1">
-    <div className="flex items-center gap-3 text-xs text-slate-400 mb-2">
-      <Link
-        href="/customers"
-        className="hover:text-emerald-400 transition-colors"
-      >
-        ← Back to Customer Directory
-      </Link>
-      <span className="text-slate-600">|</span>
-      <Link
-        href={`/customers/crm?customerId=${customerId}`}
-        className="inline-flex items-center gap-1 text-slate-300 hover:text-emerald-400 text-xs font-medium"
-      >
-        Back to Customer CRM
-      </Link>
-    </div>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-800 pb-5">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3 text-xs text-slate-400 mb-2">
+            <Link href="/customers" className="hover:text-emerald-400 transition-colors">
+              ← Back to Customer Directory
+            </Link>
+            <span className="text-slate-600">|</span>
+            <Link href={`/customers/crm?customerId=${customerId}`} className="inline-flex items-center gap-1 text-slate-300 hover:text-emerald-400 text-xs font-medium">
+              Back to Customer CRM
+            </Link>
+          </div>
+
           <div className="flex items-center gap-3">
             <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl">
               <Building2 className="h-6 w-6 text-emerald-400" />
@@ -490,14 +517,23 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl font-bold text-white tracking-tight">{customer.company_name}</h1>
+                <span className={`border text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${statusInfo.class}`}>
+                  {statusInfo.label}
+                </span>
                 <span className={`border text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${currentTier.class}`}>
                   {currentTier.label}
                 </span>
               </div>
-              <p className="text-xs text-slate-400 flex items-center gap-3 mt-1">
-                <span className="flex items-center gap-1"><MapPin className="h-3 w-3 text-slate-500" /> {customer.city}, {customer.country}</span>
+              <p className="text-xs text-slate-400 flex items-center gap-3 mt-1 flex-wrap font-mono">
+                {customer.customer_code && (
+                  <>
+                    <span>SAF Code: <strong className="text-emerald-400">{customer.customer_code}</strong></span>
+                    <span>•</span>
+                  </>
+                )}
+                <span className="flex items-center gap-1"><MapPin className="h-3 w-3 text-slate-500" /> {customer.city ? `${customer.city}, ` : ''}{customer.country}</span>
                 <span>•</span>
-                <span>CR / Tax No: <strong className="text-slate-200">{customer.registration_no}</strong></span>
+                <span>CR No / Tax No: <strong className="text-slate-200">{customer.registration_no}</strong></span>
                 <span>•</span>
                 <span>Credit Exposure Limit: <strong className="text-emerald-400">${customer.credit_limit.toLocaleString()} USD</strong></span>
               </p>
@@ -523,7 +559,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
         </div>
       </div>
 
-      {/* Synchronized Metrics across CRM + Sales Orders + Main Customer Registry */}
+      {/* Synchronized Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex items-center justify-between">
           <div>
@@ -540,27 +576,44 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
           <div>
             <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400">Active Shipments & Orders</p>
             <h3 className="text-lg font-bold text-white mt-1">{activeOrdersCount} Active Stage</h3>
-            <p className="text-[10px] text-slate-500 mt-0.5">Payment Terms: {customer.payment_terms}</p>
+            <p className="text-[10px] text-slate-500 mt-0.5">Payment Terms: <span className="font-mono text-emerald-400">{customer.payment_terms}</span></p>
           </div>
           <div className="p-2.5 bg-sky-500/10 border border-sky-500/20 rounded-lg text-sky-400">
             <Package className="h-5 w-5" />
           </div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex items-center justify-between">
-          <div>
-            <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400">SFDA & Compliance Status</p>
-            <div className="flex items-center gap-1.5 mt-1">
-              <ShieldCheck className="h-4 w-4 text-emerald-400" />
-              <span className="text-sm font-bold text-emerald-400">{customer.kyc_status}</span>
-            </div>
-            <p className="text-[10px] text-slate-500 mt-0.5">Credit Exposure: ${customer.credit_limit.toLocaleString()}</p>
-          </div>
-          <div className="p-2.5 bg-purple-500/10 border border-purple-500/20 rounded-lg text-purple-400">
-            <FileCheck2 className="h-5 w-5" />
-          </div>
+        {/* 3rd Card: Trade Compliance Only */}
+<div className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex items-center justify-between">
+  <div>
+    <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400">Trade Compliance</p>
+    <div className="flex items-center gap-1.5 mt-1">
+      {((customer as any).trade_compliance === 'Compliance Cleared' || 
+        (customer as any).compliance_cleared === true || 
+        (customer as any).compliance_cleared === 'true' || 
+        Boolean((customer as any).compliance_reg_no || customer.sfda_registration_no || (customer as any).permit_ref)) ? (
+        <>
+          <ShieldCheck className="h-4 w-4 text-emerald-400" />
+          <span className="text-sm font-bold text-emerald-400 uppercase">Compliance Cleared</span>
+        </>
+      ) : (
+        <>
+          <Clock className="h-4 w-4 text-amber-400" />
+          <span className="text-sm font-bold text-amber-400 uppercase">Pending Compliance</span>
+        </>
+      )}
+    </div>
+    <p className="text-[10px] text-slate-500 font-mono mt-0.5">
+      {((customer as any).compliance_reg_no || customer.sfda_registration_no || (customer as any).permit_ref) 
+        ? `Ref: ${(customer as any).compliance_reg_no || customer.sfda_registration_no || (customer as any).permit_ref}` 
+        : "No SAF-CR Ref Listed"}
+    </p>
+  </div>
+  <div className="p-2.5 bg-purple-500/10 border border-purple-500/20 rounded-lg text-purple-400">
+    <FileCheck2 className="h-5 w-5" />
+  </div>
+</div>
         </div>
-      </div>
 
       {/* Navigation Tabs */}
       <div className="border-b border-slate-800">
@@ -613,7 +666,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
               <p className="text-xs text-slate-400">No contact persons recorded for this customer yet.</p>
               <button 
                 onClick={() => openContactModal()}
-                className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold inline-flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
               >
                 <Plus className="h-3.5 w-3.5" /> Add First Contact
               </button>
@@ -621,7 +674,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {contacts.map((contact) => {
-                const displayName = contact.name && contact.name.trim() !== '' ? contact.name : 'Primary Contact Person';
+                const displayName = (contact.name || contact.contact_name || '').trim() || 'Primary Contact Person';
                 return (
                   <div key={contact.id} className="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-xl p-4 space-y-3 relative transition-all">
                     <div className="flex items-start justify-between">
@@ -689,83 +742,96 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
             </button>
           </div>
 
-          <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-800/50 text-slate-400 font-semibold border-b border-slate-800">
-                <tr>
-                  <th className="p-3.5">Document Name</th>
-                  <th className="p-3.5">Document Number</th>
-                  <th className="p-3.5">Issue Date</th>
-                  <th className="p-3.5">Expiry Date</th>
-                  <th className="p-3.5">Status</th>
-                  <th className="p-3.5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60 text-slate-200">
-                {kycDocs.map((doc) => (
-                  <tr key={doc.id} className="hover:bg-slate-800/30 transition-colors">
-                    <td className="p-3.5 font-bold text-white flex items-center gap-2">
-                      <FileCheck2 className="h-4 w-4 text-emerald-400 shrink-0" />
-                      <div>
-                        <div>{doc.doc_type}</div>
-                        {doc.file_name && <div className="text-[10px] text-slate-500 font-normal">{doc.file_name}</div>}
-                      </div>
-                    </td>
-                    <td className="p-3.5 font-mono text-slate-300">{doc.document_number}</td>
-                    <td className="p-3.5 text-slate-400 font-mono">{doc.issue_date}</td>
-                    <td className="p-3.5 text-slate-400 font-mono">{doc.expiry_date}</td>
-                    <td className="p-3.5">
-                      {doc.status === 'VERIFIED' && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                          <CheckCircle2 className="h-3 w-3" /> Verified
-                        </span>
-                      )}
-                      {doc.status === 'PENDING_REVIEW' && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-500/10 text-amber-400 border border-amber-500/30">
-                          <Clock className="h-3 w-3" /> Pending Review
-                        </span>
-                      )}
-                      {doc.status === 'EXPIRED' && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-rose-500/10 text-rose-400 border border-rose-500/30">
-                          <AlertCircle className="h-3 w-3" /> Expired
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-3.5 text-right space-x-1.5">
-                      {doc.file_path ? (
-                        <>
-                          <button 
-                            onClick={() => handlePreviewDoc(doc)}
-                            className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] font-medium inline-flex items-center gap-1 cursor-pointer"
-                          >
-                            <Eye className="h-3 w-3" /> View
-                          </button>
-                          <a 
-                            href={supabase.storage.from('kyc-documents').getPublicUrl(doc.file_path).data.publicUrl} 
-                            download={doc.file_name || `${doc.doc_type}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="px-2 py-1 bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 border border-emerald-500/30 rounded text-[11px] font-medium inline-flex items-center gap-1"
-                          >
-                            <Download className="h-3 w-3" /> Download
-                          </a>
-                        </>
-                      ) : (
-                        <span className="text-[10px] text-slate-500 italic mr-2">No File</span>
-                      )}
-
-                      <button onClick={() => openKycModal(doc)} title="Edit Record" className="p-1 hover:bg-slate-800 text-slate-400 hover:text-emerald-400 rounded cursor-pointer">
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button onClick={() => handleDeleteKyc(doc)} title="Delete Record" className="p-1 hover:bg-slate-800 text-slate-400 hover:text-rose-400 rounded cursor-pointer">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </td>
+          {kycDocs.length === 0 ? (
+            <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-8 text-center space-y-3">
+              <FileCheck2 className="h-8 w-8 text-slate-600 mx-auto" />
+              <p className="text-xs text-slate-400">No KYC or legal documents uploaded for this customer yet.</p>
+              <button 
+                onClick={() => openKycModal()}
+                className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
+              >
+                <Upload className="h-3.5 w-3.5" /> Upload First Document
+              </button>
+            </div>
+          ) : (
+            <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-800/50 text-slate-400 font-semibold border-b border-slate-800">
+                  <tr>
+                    <th className="p-3.5">Document Name</th>
+                    <th className="p-3.5">Document Number</th>
+                    <th className="p-3.5">Issue Date</th>
+                    <th className="p-3.5">Expiry Date</th>
+                    <th className="p-3.5">Status</th>
+                    <th className="p-3.5 text-right">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60 text-slate-200">
+                  {kycDocs.map((doc) => (
+                    <tr key={doc.id} className="hover:bg-slate-800/30 transition-colors">
+                      <td className="p-3.5 font-bold text-white flex items-center gap-2">
+                        <FileCheck2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                        <div>
+                          <div>{doc.doc_type}</div>
+                          {doc.file_name && <div className="text-[10px] text-slate-500 font-normal">{doc.file_name}</div>}
+                        </div>
+                      </td>
+                      <td className="p-3.5 font-mono text-slate-300">{doc.document_number}</td>
+                      <td className="p-3.5 text-slate-400 font-mono">{doc.issue_date}</td>
+                      <td className="p-3.5 text-slate-400 font-mono">{doc.expiry_date}</td>
+                      <td className="p-3.5">
+                        {doc.status === 'VERIFIED' && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                            <CheckCircle2 className="h-3 w-3" /> Verified
+                          </span>
+                        )}
+                        {doc.status === 'PENDING_REVIEW' && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                            <Clock className="h-3 w-3" /> Pending Review
+                          </span>
+                        )}
+                        {doc.status === 'EXPIRED' && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-rose-500/10 text-rose-400 border border-rose-500/30">
+                            <AlertCircle className="h-3 w-3" /> Expired
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3.5 text-right space-x-1.5">
+                        {doc.file_path ? (
+                          <>
+                            <button 
+                              onClick={() => handlePreviewDoc(doc)}
+                              className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] font-medium inline-flex items-center gap-1 cursor-pointer"
+                            >
+                              <Eye className="h-3 w-3" /> View
+                            </button>
+                            <a 
+                              href={supabase.storage.from('kyc-documents').getPublicUrl(doc.file_path).data.publicUrl} 
+                              download={doc.file_name || `${doc.doc_type}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="px-2 py-1 bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 border border-emerald-500/30 rounded text-[11px] font-medium inline-flex items-center gap-1"
+                            >
+                              <Download className="h-3 w-3" /> Download
+                            </a>
+                          </>
+                        ) : (
+                          <span className="text-[10px] text-slate-500 italic mr-2">No File</span>
+                        )}
+
+                        <button onClick={() => openKycModal(doc)} title="Edit Record" className="p-1 hover:bg-slate-800 text-slate-400 hover:text-emerald-400 rounded cursor-pointer">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button onClick={() => handleDeleteKyc(doc)} title="Delete Record" className="p-1 hover:bg-slate-800 text-slate-400 hover:text-rose-400 rounded cursor-pointer">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
@@ -782,54 +848,67 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
             </button>
           </div>
 
-          <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-800/50 text-slate-400 font-semibold border-b border-slate-800">
-                <tr>
-                  <th className="p-3.5">Order No</th>
-                  <th className="p-3.5">Date</th>
-                  <th className="p-3.5">Cargo Description</th>
-                  <th className="p-3.5">Incoterm / Destination</th>
-                  <th className="p-3.5">Total Value</th>
-                  <th className="p-3.5">Lifecycle Stage</th>
-                  <th className="p-3.5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60 text-slate-200">
-                {tradeOrders.map((order) => (
-                  <tr key={order.id} className="hover:bg-slate-800/30 transition-colors">
-                    <td className="p-3.5 font-bold font-mono text-emerald-400">{order.order_number}</td>
-                    <td className="p-3.5 font-mono text-slate-400">{order.order_date}</td>
-                    <td className="p-3.5 text-slate-200">{order.items_summary}</td>
-                    <td className="p-3.5 font-medium text-slate-300">{order.incoterm}</td>
-                    <td className="p-3.5 font-bold text-white font-mono">${Number(order.total_value).toLocaleString()} USD</td>
-                    <td className="p-3.5">
-                      <select
-                        value={order.status}
-                        onChange={(e) => handleQuickStatusChange(order.id, e.target.value as TradeOrder['status'])}
-                        className="text-[10px] font-bold uppercase rounded px-2 py-1 bg-slate-950 border border-slate-800 focus:outline-none cursor-pointer text-emerald-400"
-                      >
-                        <option value="DRAFT">DRAFT</option>
-                        <option value="CONFIRMED">CONFIRMED</option>
-                        <option value="PROCESSING">PROCESSING</option>
-                        <option value="IN_TRANSIT">IN TRANSIT</option>
-                        <option value="DELIVERED">DELIVERED</option>
-                        <option value="CANCELLED">CANCELLED</option>
-                      </select>
-                    </td>
-                    <td className="p-3.5 text-right space-x-1">
-                      <button onClick={() => openOrderModal(order)} title="Edit Order" className="p-1 hover:bg-slate-800 text-slate-400 hover:text-emerald-400 rounded cursor-pointer">
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button onClick={() => handleDeleteOrder(order.id)} title="Delete Order" className="p-1 hover:bg-slate-800 text-slate-400 hover:text-rose-400 rounded cursor-pointer">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </td>
+          {tradeOrders.length === 0 ? (
+            <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-8 text-center space-y-3">
+              <History className="h-8 w-8 text-slate-600 mx-auto" />
+              <p className="text-xs text-slate-400">No trade or sales orders recorded for this customer yet.</p>
+              <button 
+                onClick={() => openOrderModal()}
+                className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus className="h-3.5 w-3.5" /> Create First Order
+              </button>
+            </div>
+          ) : (
+            <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-800/50 text-slate-400 font-semibold border-b border-slate-800">
+                  <tr>
+                    <th className="p-3.5">Order No</th>
+                    <th className="p-3.5">Date</th>
+                    <th className="p-3.5">Cargo Description</th>
+                    <th className="p-3.5">Incoterm / Destination</th>
+                    <th className="p-3.5">Total Value</th>
+                    <th className="p-3.5">Lifecycle Stage</th>
+                    <th className="p-3.5 text-right">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60 text-slate-200">
+                  {tradeOrders.map((order) => (
+                    <tr key={order.id} className="hover:bg-slate-800/30 transition-colors">
+                      <td className="p-3.5 font-bold font-mono text-emerald-400">{order.order_number}</td>
+                      <td className="p-3.5 font-mono text-slate-400">{order.order_date}</td>
+                      <td className="p-3.5 text-slate-200">{order.items_summary}</td>
+                      <td className="p-3.5 font-medium text-slate-300">{order.incoterm}</td>
+                      <td className="p-3.5 font-bold text-white font-mono">${Number(order.total_value).toLocaleString()} USD</td>
+                      <td className="p-3.5">
+                        <select
+                          value={order.status}
+                          onChange={(e) => handleQuickStatusChange(order.id, e.target.value as TradeOrder['status'])}
+                          className="text-[10px] font-bold uppercase rounded px-2 py-1 bg-slate-950 border border-slate-800 focus:outline-none cursor-pointer text-emerald-400"
+                        >
+                          <option value="DRAFT">DRAFT</option>
+                          <option value="CONFIRMED">CONFIRMED</option>
+                          <option value="PROCESSING">PROCESSING</option>
+                          <option value="IN_TRANSIT">IN TRANSIT</option>
+                          <option value="DELIVERED">DELIVERED</option>
+                          <option value="CANCELLED">CANCELLED</option>
+                        </select>
+                      </td>
+                      <td className="p-3.5 text-right space-x-1">
+                        <button onClick={() => openOrderModal(order)} title="Edit Order" className="p-1 hover:bg-slate-800 text-slate-400 hover:text-emerald-400 rounded cursor-pointer">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button onClick={() => handleDeleteOrder(order.id)} title="Delete Order" className="p-1 hover:bg-slate-800 text-slate-400 hover:text-rose-400 rounded cursor-pointer">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 

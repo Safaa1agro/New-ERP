@@ -6,7 +6,16 @@ import { CRMOpportunity, CustomerComplaint } from '@/types/customer.types';
 import { CRMPipelineBoard } from '@/components/customers/crm-pipeline-board';
 import { CustomerComplaintsList } from '@/components/customers/customer-complaints-list';
 import { CustomerCommLogs, CommLog } from '@/components/customers/communication-logs';
-import { Target, RefreshCw, PlusCircle, AlertTriangle, Filter, X } from 'lucide-react';
+import { 
+  Target, 
+  RefreshCw, 
+  PlusCircle, 
+  AlertTriangle, 
+  Filter, 
+  X, 
+  ArrowLeft, 
+  ExternalLink 
+} from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 
@@ -99,7 +108,6 @@ function CRMContent() {
       setOpportunities(opps || []);
       setComplaints(cmps || []);
       
-      // Format comm logs for UI display including direction
       const formattedLogs: CommLog[] = (comms || []).map((c: any) => ({
         id: c.id,
         customer_name: c.customers?.company_name || 'General Inquiry',
@@ -209,57 +217,58 @@ function CRMContent() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Top Header & Actions */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-900 border border-slate-800 p-5 rounded-xl gap-4">
-        <div>
-          <h1 className="text-xl font-black text-white flex items-center gap-2">
-            <Target className="h-6 w-6 text-amber-500" /> Export Sales Pipeline & CRM Engine
-          </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Leads, contract negotiations, target commodity volumes & complaint resolutions
-          </p>
+    <div className="p-4 space-y-4 max-w-full min-h-screen bg-slate-950 text-slate-100">
+      
+      {/* UNIFIED SINGLE HEADER BAR */}
+      <div className="bg-slate-900 border border-slate-800 p-3.5 rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Link
+              href="/customers"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-md border border-slate-700 transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Customers
+            </Link>
+            <h1 className="text-base font-black text-white flex items-center gap-1.5 ml-1">
+              <Target className="h-5 w-5 text-amber-500" /> CRM & Export Sales Engine
+            </h1>
+          </div>
 
-        {customerName && (
-  <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs px-2.5 py-1 rounded-md mt-2">
-    <Filter className="h-3 w-3" />
-    <span>
-      Filtered by Customer:{' '}
-      <Link 
-        href={`/customers/${searchParams.get('customerId')}`} 
-        className="font-bold underline hover:text-white transition-colors"
-        title="Open 360° Customer Profile"
-      >
-        {customerName} ↗
-      </Link>
-    </span>
-    <Link href="/customers/crm" className="hover:text-white ml-1" title="Clear Filter">
-      <X className="h-3 w-3" />
-    </Link>
-  </div>
-)}
+          {customerName && (
+            <div className="inline-flex items-center gap-2 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-md">
+              <Filter className="h-3 w-3" />
+              <span>Filtered: <strong className="text-white">{customerName}</strong></span>
+              <Link href={`/customers/${customerIdFilter}`} className="hover:text-white underline ml-1 inline-flex items-center gap-0.5">
+                360° Profile <ExternalLink className="w-3 h-3" />
+              </Link>
+              <Link href="/customers/crm" className="hover:text-white ml-1 text-slate-400">
+                <X className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          )}
         </div>
 
-        {/* Action Buttons */}
+        {/* Header Action Buttons */}
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => setIsOppModalOpen(true)}
             className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
           >
-            <PlusCircle className="h-4 w-4" /> New Opportunity
+            <PlusCircle className="h-3.5 w-3.5" /> New Opportunity
           </button>
 
           <button
             onClick={() => setIsClaimModalOpen(true)}
             className="flex items-center gap-1.5 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
           >
-            <AlertTriangle className="h-4 w-4" /> Log Quality Claim
+            <AlertTriangle className="h-3.5 w-3.5" /> Log Quality Claim
           </button>
 
           <button
             onClick={loadCRMData}
             disabled={loading}
-            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin text-amber-500' : ''}`} />
             Sync
@@ -497,7 +506,7 @@ function CRMContent() {
 
 export default function CRMDashboardPage() {
   return (
-    <Suspense fallback={<div className="p-6 text-slate-400">Loading CRM Engine...</div>}>
+    <Suspense fallback={<div className="p-4 text-slate-400 text-xs">Loading CRM Engine...</div>}>
       <CRMContent />
     </Suspense>
   );
