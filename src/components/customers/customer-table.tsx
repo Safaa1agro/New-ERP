@@ -122,7 +122,7 @@ const handleUpdateCustomer = async (e: React.FormEvent) => {
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="bg-slate-800/50 border-b border-slate-800 text-slate-400 font-semibold uppercase tracking-wider">
-                <th className="p-3.5">Customer Code / Company</th>
+                <th className="p-3.5">Customer Code: SAF-IMP-xx-xx</th>
                 <th className="p-3.5">Country & Destination Port</th>
                 <th className="p-3.5">Business Type</th>
                 <th className="p-3.5">Payment Terms</th>
@@ -297,6 +297,24 @@ const handleUpdateCustomer = async (e: React.FormEvent) => {
                     required
                   />
                 </div>
+
+                {/* Customer Code */}
+<div>
+  <label className="block text-xs font-semibold text-slate-300 mb-1">Customer Code *</label>
+  <input
+    type="text"
+    value={editingCustomer?.customer_code || ''}
+    onChange={(e) =>
+      setEditingCustomer((prev: any) => ({
+        ...prev,
+        customer_code: e.target.value,
+      }))
+    }
+    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-emerald-400 font-mono font-bold focus:outline-none focus:border-emerald-500"
+    placeholder="e.g. SAF-IMP-UAE-1092"
+    required
+  />
+</div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1">Customer Status *</label>

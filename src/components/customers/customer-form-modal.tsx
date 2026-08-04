@@ -29,11 +29,92 @@ export function CustomerFormModal({ onSuccess, onClose }: CustomerFormModalProps
   const [formData, setFormData] = useState(INITIAL_FORM_STATE);
 
   const generateCustomerCode = () => {
-    const countryIso = formData.primary_country.slice(0, 3).toUpperCase() || 'GCC';
-    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-    const code = `IMP-${countryIso}-${randomSuffix}`;
-    setFormData((prev) => ({ ...prev, customer_code: code }));
+  const countryRaw = ((formData as any).primary_country || 'United Arab Emirates').trim();
+  const countryUpper = countryRaw.toUpperCase();
+
+  // Comprehensive Country Code Map for global trade
+  const countryMap: Record<string, string> = {
+    // Middle East & GCC
+    'UNITED ARAB EMIRATES': 'UAE',
+    'UAE': 'UAE',
+    'EMIRATES': 'UAE',
+    'SAUDI ARABIA': 'KSA',
+    'KINGDOM OF SAUDI ARABIA': 'KSA',
+    'KSA': 'KSA',
+    'QATAR': 'QAT',
+    'OMAN': 'OMN',
+    'KUWAIT': 'KWT',
+    'BAHRAIN': 'BAH',
+    'JORDAN': 'JOR',
+    'EGYPT': 'EGY',
+
+    // Americas
+    'UNITED STATES': 'USA',
+    'UNITED STATES OF AMERICA': 'USA',
+    'USA': 'USA',
+    'US': 'USA',
+    'CANADA': 'CAN',
+    'BRAZIL': 'BRA',
+    'MEXICO': 'MEX',
+
+    // Europe & UK
+    'UNITED KINGDOM': 'UK',
+    'UK': 'UK',
+    'GREAT BRITAIN': 'GBR',
+    'ENGLAND': 'GBR',
+    'GERMANY': 'DEU',
+    'FRANCE': 'FRA',
+    'ITALY': 'ITA',
+    'SPAIN': 'ESP',
+    'NETHERLANDS': 'NLD',
+    'TURKEY': 'TUR',
+    'TURKIYE': 'TUR',
+
+    // Asia & Pacific
+    'CHINA': 'CHN',
+    'JAPAN': 'JPN',
+    'SOUTH KOREA': 'KOR',
+    'KOREA': 'KOR',
+    'INDIA': 'IND',
+    'PAKISTAN': 'PAK',
+    'SINGAPORE': 'SGP',
+    'MALAYSIA': 'MYS',
+    'AUSTRALIA': 'AUS',
+    'NEW ZEALAND': 'NZL',
+    'SOUTH AFRICA': 'ZAF',
   };
+
+  let countryTag = '';
+
+  // 1. Direct match check in lookup table
+  if (countryMap[countryUpper]) {
+    countryTag = countryMap[countryUpper];
+  } else {
+    // 2. Partial key match check (e.g. "Kingdom of Saudi Arabia" -> KSA)
+    const matchedKey = Object.keys(countryMap).find((key) => countryUpper.includes(key));
+    
+    if (matchedKey) {
+      countryTag = countryMap[matchedKey];
+    } else {
+      // 3. Dynamic Fallback for multi-word countries (e.g. "South Korea" -> SK, "Sri Lanka" -> SL)
+      const words = countryRaw.split(/\s+/).filter(Boolean);
+      if (words.length >= 2) {
+        countryTag = words.map((w) => w[0]).join('').replace(/[^A-Z]/gi, '').toUpperCase().slice(0, 3);
+      }
+
+      // 4. Fallback for single unknown word: take first 3 clean letters
+      if (!countryTag || countryTag.length < 2) {
+        const cleanLetters = countryUpper.replace(/[^A-Z]/g, '');
+        countryTag = cleanLetters.slice(0, 3) || 'IMP';
+      }
+    }
+  }
+
+  const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+  const code = `SAF-IMP-${countryTag}-${randomSuffix}`;
+
+  setFormData((prev: any) => ({ ...prev, customer_code: code }));
+};
 
   const handleClose = () => {
     setFormData(INITIAL_FORM_STATE);

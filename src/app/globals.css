@@ -4,34 +4,58 @@
 
 @layer base {
   :root {
-      --background: 0 0% 100%;
-          --foreground: 222.2 84% 4.9%;
-              --card: 0 0% 100%;
-                  --card-foreground: 222.2 84% 4.9%;
-                      --popover: 0 0% 100%;
-                          --popover-foreground: 222.2 84% 4.9%;
-                              --primary: 142.1 76.2% 36.3%;
-                                  --primary-foreground: 355.7 100% 97.3%;
-                                      --secondary: 222.2 47.4% 11.2%;
-                                          --secondary-foreground: 210 40% 98%;
-                                              --muted: 210 40% 96.1%;
-                                                  --muted-foreground: 215.4 16.3% 46.9%;
-                                                      --accent: 210 40% 96.1%;
-                                                          --accent-foreground: 222.2 47.4% 11.2%;
-                                                              --destructive: 0 84.2% 60.2%;
-                                                                  --destructive-foreground: 210 40% 98%;
-                                                                      --border: 214.3 31.8% 91.4%;
-                                                                          --input: 214.3 31.8% 91.4%;
-                                                                              --ring: 142.1 76.2% 36.3%;
-                                                                                  --radius: 0.5rem;
-                                                                                    }
-                                                                                    }
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 142.1 76.2% 36.3%;
+    --primary-foreground: 355.7 100% 97.3%;
+    --secondary: 222.2 47.4% 11.2%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 142.1 76.2% 36.3%;
+    --radius: 0.5rem;
+  }
 
-                                                                                    @layer base {
-                                                                                      * {
-                                                                                          @apply border-border;
-                                                                                            }
-                                                                                              body {
-                                                                                                  @apply bg-background text-foreground;
-                                                                                                    }
-                                                                                                    }
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Global Custom Dark Scrollbar (Webkit / Chrome / Edge / Safari) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #020617; /* Dark slate-950 background */
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155; /* Slate-700 subtle handle */
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #10b981; /* Emerald-500 accent on hover */
+}
+
+/* Firefox Custom Scrollbar */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: #334155 #020617;
+}

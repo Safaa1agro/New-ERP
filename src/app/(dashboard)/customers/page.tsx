@@ -5,12 +5,13 @@ import Link from 'next/link';
 import { Customer } from '@/types/customer.types';
 import { CustomerTable } from '@/components/customers/customer-table';
 import { CustomerFormModal } from '@/components/customers/customer-form-modal';
-import { Users, Globe, ShieldCheck, DollarSign, Kanban, Clock, Plus } from 'lucide-react';
+import { Users, Globe, ShieldCheck, DollarSign, Kanban, Clock, Plus, Search } from 'lucide-react';
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+const [searchTerm, setSearchTerm] = useState('');
 
   const loadCustomers = async () => {
     setLoading(true);
@@ -99,6 +100,19 @@ export default function CustomersPage() {
   const readyForTradeCount = customers.filter(c => getStatus(c) === 'ACTIVE' && isComplianceCleared(c)).length;
   const notReadyForTradeCount = customers.length - readyForTradeCount;
 
+// === ADD FILTER LOGIC HERE (Right before Line 103) ===
+  const filteredCustomers = customers.filter((customer) => {
+    if (!searchTerm.trim()) return true;
+    const query = searchTerm.toLowerCase();
+
+    return (
+      customer.customer_code?.toLowerCase().includes(query) ||
+      customer.company_name?.toLowerCase().includes(query) ||
+      customer.country?.toLowerCase().includes(query) ||
+      customer.destination_port?.toLowerCase().includes(query)
+    );
+  });
+
   return (
     <div className="space-y-6">
       
@@ -117,7 +131,7 @@ export default function CustomersPage() {
         </div>
         <div className="flex items-center gap-3 shrink-0">
           <Link
-            href="/crm"
+            href="/customers/crm"
             className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold rounded-xl border border-slate-700 transition"
           >
             <Kanban className="w-4 h-4 text-emerald-400" />
@@ -229,9 +243,35 @@ export default function CustomersPage() {
 
       </div>
 
+{/* Search Bar & Counter */}
+<div className="flex items-center justify-between gap-4 mb-4">
+  <div className="relative flex-1 max-w-md">
+    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+    <input
+      type="text"
+      placeholder="Search by Customer Code (e.g. SAF-IMP), Company, or Port..."
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      className="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+    />
+    {searchTerm && (
+      <button
+        onClick={() => setSearchTerm('')}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 hover:text-slate-300"
+      >
+        Clear
+      </button>
+    )}
+  </div>
+
+  <div className="text-xs text-slate-400 font-mono">
+    Showing <span className="text-emerald-400 font-bold">{filteredCustomers.length}</span> of {customers.length} Importers
+  </div>
+</div>
+
       {/* ISOLATED TABLE WRAPPER (PREVENTS PAGE DISTORTION) */}
       <div className="w-full overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900/60">
-        <CustomerTable customers={customers} loading={loading} onRefresh={loadCustomers} />
+        <CustomerTable customers={filteredCustomers} loading={loading} onRefresh={loadCustomers} />
       </div>
 
       {/* MODAL FOR REGISTERING NEW IMPORTER */}

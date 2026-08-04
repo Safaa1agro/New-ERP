@@ -533,7 +533,7 @@ export default function CustomerDetailPage({
                 )}
                 <span className="flex items-center gap-1"><MapPin className="h-3 w-3 text-slate-500" /> {customer.city ? `${customer.city}, ` : ''}{customer.country}</span>
                 <span>•</span>
-                <span>CR No / Tax No: <strong className="text-slate-200">{customer.registration_no}</strong></span>
+                <span>CRN/Tax No: <strong className="text-slate-200">{customer.registration_no}</strong></span>
                 <span>•</span>
                 <span>Credit Exposure Limit: <strong className="text-emerald-400">${customer.credit_limit.toLocaleString()} USD</strong></span>
               </p>
