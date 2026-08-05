@@ -13,6 +13,7 @@ import {
   Truck,
   ShieldCheck,
   Landmark,
+  UserCheck,
 } from 'lucide-react';
 import { AppRole } from '@/types/database.types';
 
@@ -29,6 +30,7 @@ export function Sidebar({ userRole = 'ROLE_ADMIN' }: SidebarProps) {
     { name: 'User Management', href: '/users', icon: Users, roles: ['ROLE_ADMIN'] },
     { name: 'Roles & Authorities', href: '/roles', icon: ShieldCheck, roles: ['ROLE_ADMIN'] },
     { name: 'Customers', href: '/customers', icon: Users },
+    { name: 'Suppliers', href: '/suppliers', icon: UserCheck },
     { name: 'Product Master', href: '/products', icon: Package },
     { name: 'Quotations', href: '/quotations', icon: FileText },
     { name: 'Sales Orders', href: '/sales-orders', icon: ShoppingCart },
