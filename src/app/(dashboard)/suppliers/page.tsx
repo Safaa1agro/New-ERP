@@ -14,6 +14,7 @@ import {
 
 import { SupplierTable } from '@/components/suppliers/supplier-table';
 import { SupplierFormModal } from '@/components/suppliers/supplier-form-modal';
+import Link from 'next/link';
 
 export default function SuppliersDirectoryPage() {
   const [suppliers, setSuppliers] = useState<any[]>([]);
@@ -112,6 +113,13 @@ export default function SuppliersDirectoryPage() {
             Manage vendor profiles, cattle farm origins, compliance readiness, and catalog items.
           </p>
         </div>
+
+<Link
+  href="/suppliers/srm"
+  className="px-3 py-2 text-xs font-semibold text-slate-950 bg-emerald-500 hover:bg-emerald-400 rounded-lg inline-flex items-center gap-1.5"
+>
+  SRM & Procurement Engine
+</Link>
 
         <button
           onClick={handleOpenAddModal}
