@@ -13,6 +13,10 @@ import {
   Filter,
   ExternalLink,
   X,
+  ShieldAlert,
+  Calendar,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 
 import { CreateRequirementModal } from '@/components/suppliers/srm/create-requirement-modal';
@@ -43,6 +47,7 @@ export default function SRMPage() {
   const [isReqModalOpen, setIsReqModalOpen] = useState(false);
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState<any>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -100,6 +105,24 @@ export default function SRMPage() {
   const selectedSupplierName = supplierIdFilter
     ? suppliers.find((s) => s.id === supplierIdFilter)?.company_name || 'Selected Supplier'
     : null;
+
+const getStatusBadgeStyle = (status: string) => {
+  switch (status?.toUpperCase()) {
+    case 'CLAIM APPROVED':
+    case 'APPROVED':
+      return 'bg-purple-500/10 text-purple-400 border-purple-500/30';
+    case 'UNDER INVESTIGATION':
+    case 'INVESTIGATING':
+      return 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30';
+    case 'RESOLVED':
+      return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
+    case 'REJECTED':
+      return 'bg-rose-500/10 text-rose-400 border-rose-500/30';
+    case 'LOGGED':
+    default:
+      return 'bg-amber-500/10 text-amber-400 border-amber-500/30';
+  }
+};
 
   return (
     <div className="p-6 space-y-6 bg-slate-950 min-h-screen text-slate-100">
@@ -267,7 +290,8 @@ export default function SRMPage() {
 </div>
 
       {/* 2. QUALITY & NON-CONFORMANCE TICKETS */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4">
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+        {/* Header Row */}
         <div className="flex justify-between items-center">
           <div>
             <h3 className="text-sm font-bold text-rose-400 flex items-center gap-2">
@@ -275,55 +299,147 @@ export default function SRMPage() {
             </h3>
             <p className="text-xs text-slate-400">Track quality breaches, temperature logs, packaging defects, and claims.</p>
           </div>
-          <span className="px-2 py-1 rounded text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700">
-            Total: {tickets.length}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-1 rounded text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700">
+              Total: {tickets.length}
+            </span>
+            <button
+              onClick={() => {
+                setSelectedTicket(null);
+                setIsTicketModalOpen(true);
+              }}
+              className="text-xs font-medium px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-colors flex items-center gap-1"
+            >
+              + Log Quality Claim
+            </button>
+          </div>
         </div>
 
-        <div className="space-y-2">
+        {/* Tickets List Container */}
+        <div className="max-h-[280px] overflow-y-auto space-y-2 pr-1 scrollbar-thin scrollbar-thumb-emerald-500 scrollbar-track-slate-800/60">
           {tickets.length === 0 ? (
             <div className="text-xs text-slate-500 text-center py-6 bg-slate-950/40 rounded-lg border border-dashed border-slate-800">
               No quality tickets logged.
             </div>
           ) : (
-            tickets.map((tkt) => (
-              <div key={tkt.id} className="bg-slate-950 border border-slate-800 rounded-lg p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold text-amber-400">{tkt.ticket_code}</span>
-                    <span className="text-xs font-bold text-slate-100">
-                      {tkt.suppliers?.company_name || tkt.suppliers?.company_or_farm_name}
+            tickets.map((tkt) => {
+              // Bug 3 Fix: Format as Supplier ID + CMP + Numbers
+              const suppId = tkt.supplier_id || tkt.suppliers?.supplier_code || 'SUP';
+              const rawCode = tkt.ticket_code || tkt.id;
+              const formattedTicketCode = rawCode.includes('CMP')
+                ? rawCode
+                : `${suppId}-CMP-${rawCode}`;
+
+              return (
+                <div
+                  key={tkt.id}
+                  className="bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-lg p-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs transition-all"
+                >
+                  {/* Left Side: Ticket Code, Supplier Name, Issue Type Tag, Batch Code, Description */}
+                  <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1">
+                    {/* Yellow/Amber Ticket ID Badge (Bug 3 Fix) */}
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30 shrink-0">
+                      {formattedTicketCode}
                     </span>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-950/80 text-rose-400 border border-rose-800">
+
+                    {/* Supplier Name */}
+                    <span className="font-bold text-slate-100 truncate max-w-[180px]">
+                      {tkt.suppliers?.company_name || tkt.suppliers?.company_or_farm_name || 'abcd Farams'}
+                    </span>
+
+                    {/* Category / Issue Type Tag */}
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-rose-950/80 text-rose-400 border border-rose-800 shrink-0">
                       {tkt.issue_type}
                     </span>
+
+                    {/* Batch / PO Code */}
                     {tkt.batch_po_no && (
-                      <span className="text-[10px] font-mono text-slate-400">📦 {tkt.batch_po_no}</span>
+                      <span className="text-[10px] font-mono text-slate-400 flex items-center gap-1 shrink-0">
+                        <ShieldAlert className="w-3 h-3 text-slate-500" />
+                        {tkt.batch_po_no}
+                      </span>
+                    )}
+
+                    {/* Description Subtext */}
+                    {tkt.description && (
+                      <p className="w-full text-xs text-slate-300 italic truncate mt-0.5">
+                        {tkt.description}
+                      </p>
                     )}
                   </div>
-                  {tkt.description && <p className="text-xs text-slate-300 italic">{tkt.description}</p>}
-                </div>
 
-                <div className="flex items-center gap-4 justify-between sm:justify-end">
-                  <span className="font-mono text-xs font-bold text-rose-400">${Number(tkt.claim_value).toLocaleString()}</span>
-                  <select
-                    value={tkt.status}
-                    onChange={(e) => handleTicketStatusChange(tkt.id, e.target.value)}
-                    className="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none"
-                  >
-                    <option value="LOGGED">LOGGED</option>
-                    <option value="CLAIM APPROVED">CLAIM APPROVED</option>
-                    <option value="RESOLVED">RESOLVED</option>
-                    <option value="REJECTED">REJECTED</option>
-                  </select>
-                  <span className="text-[10px] text-slate-500">{new Date(tkt.created_at).toLocaleDateString()}</span>
+                  {/* Right Side: PKR Amount, Status Badge + Selector, Date Icon, Edit & Delete */}
+                  <div className="flex items-center gap-3 justify-between sm:justify-end shrink-0">
+                    {/* Claim Amount in PKR */}
+                    <span className="font-mono text-xs font-bold text-rose-400">
+                      PKR {Number(tkt.claim_value || 0).toLocaleString()}
+                    </span>
+
+                    {/* NEW DYNAMIC COLOR BADGE */}
+<span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border shrink-0 ${getStatusBadgeStyle(tkt.status)}`}>
+  {tkt.status || 'LOGGED'}
+</span>
+
+                    {/* Status Dropdown Selector */}
+                    <select
+                      value={tkt.status || 'LOGGED'}
+                      onChange={(e) => handleTicketStatusChange(tkt.id, e.target.value)}
+                      className="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none focus:border-rose-500 cursor-pointer"
+                    >
+                      <option value="LOGGED">Set Status: LOGGED</option>
+                      <option value="CLAIM APPROVED">Set Status: APPROVED</option>
+                      <option value="RESOLVED">Set Status: RESOLVED</option>
+                      <option value="REJECTED">Set Status: REJECTED</option>
+                    </select>
+
+                    {/* Calendar Icon + Date */}
+                    <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                      <Calendar className="w-3 h-3 text-slate-500" />
+                      {tkt.created_at ? new Date(tkt.created_at).toLocaleDateString() : ''}
+                    </span>
+
+                    {/* Edit & Delete Actions */}
+                    <div className="flex items-center gap-1 border-l border-slate-800 pl-2">
+                      <button
+                        onClick={() => {
+                          setSelectedTicket(tkt);
+                          setIsTicketModalOpen(true);
+                        }}
+                        title="Edit Ticket"
+                        className="p-1 text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded transition-colors"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      
+                      {/* Bug 1 Fix: Corrected endpoint path to /api/srm/quality-tickets */}
+                      <button
+                        onClick={async () => {
+                          if (confirm('Are you sure you want to delete this ticket?')) {
+                            const res = await fetch(`/api/srm/quality-tickets?id=${tkt.id}`, {
+                              method: 'DELETE',
+                            });
+                            if (res.ok) {
+                              setTickets((prev) => prev.filter((item) => item.id !== tkt.id));
+                            } else {
+                              alert('Failed to delete ticket from database.');
+                            }
+                          }
+                        }}
+                        title="Delete Ticket"
+                        className="p-1 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
-
+        
+      
       {/* 3. COMMUNICATION & ACTIVITY LOGS */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4">
         <div className="flex justify-between items-center">
@@ -381,12 +497,16 @@ export default function SRMPage() {
         onSuccess={fetchData}
       />
       <LogQualityTicketModal
-        isOpen={isTicketModalOpen}
-        suppliers={suppliers}
-        defaultSupplierId={supplierIdFilter}
-        onClose={() => setIsTicketModalOpen(false)}
-        onSuccess={fetchData}
-      />
+          isOpen={isTicketModalOpen}
+          suppliers={suppliers}
+          defaultSupplierId={supplierIdFilter}
+          ticket={selectedTicket}
+          onClose={() => {
+            setIsTicketModalOpen(false);
+            setSelectedTicket(null);
+          }}
+          onSuccess={fetchData}
+        />
       <LogCommunicationModal
         isOpen={isLogModalOpen}
         suppliers={suppliers}

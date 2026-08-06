@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, AlertTriangle } from 'lucide-react';
 
 interface LogQualityTicketModalProps {
   isOpen: boolean;
   suppliers: any[];
   defaultSupplierId?: string | null;
+  ticket?: any;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -15,6 +16,7 @@ export function LogQualityTicketModal({
   isOpen,
   suppliers,
   defaultSupplierId,
+  ticket,
   onClose,
   onSuccess,
 }: LogQualityTicketModalProps) {
@@ -27,6 +29,26 @@ export function LogQualityTicketModal({
     description: '',
   });
 
+  useEffect(() => {
+    if (ticket) {
+      setFormData({
+        supplier_id: ticket.supplier_id || defaultSupplierId || '',
+        issue_type: ticket.issue_type || 'TEMPERATURE ABUSE',
+        batch_po_no: ticket.batch_po_no || '',
+        claim_value: ticket.claim_value ? String(ticket.claim_value) : '',
+        description: ticket.description || '',
+      });
+    } else {
+      setFormData({
+        supplier_id: defaultSupplierId || '',
+        issue_type: 'TEMPERATURE ABUSE',
+        batch_po_no: '',
+        claim_value: '',
+        description: '',
+      });
+    }
+  }, [ticket, defaultSupplierId]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,20 +56,25 @@ export function LogQualityTicketModal({
     setLoading(true);
 
     try {
+      // Step 4 Fix: Dynamic method & payload for Edit vs Create
+      const method = ticket ? 'PUT' : 'POST';
+      const payload = {
+        ...(ticket && { id: ticket.id }),
+        ...formData,
+        claim_value: formData.claim_value ? Number(formData.claim_value) : 0,
+      };
+
       const res = await fetch('/api/srm/quality-tickets', {
-        method: 'POST',
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          claim_value: formData.claim_value ? Number(formData.claim_value) : 0,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (res.ok) {
         onSuccess();
         onClose();
       } else {
-        alert('Failed to log claim ticket');
+        alert(ticket ? 'Failed to update claim ticket' : 'Failed to log claim ticket');
       }
     } catch (err: any) {
       alert(err.message);
