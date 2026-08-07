@@ -108,7 +108,7 @@ const [searchTerm, setSearchTerm] = useState('');
     return (
       customer.customer_code?.toLowerCase().includes(query) ||
       customer.company_name?.toLowerCase().includes(query) ||
-      customer.country?.toLowerCase().includes(query) ||
+      customer.primary_country?.toLowerCase().includes(query) ||
       customer.destination_port?.toLowerCase().includes(query)
     );
   });
