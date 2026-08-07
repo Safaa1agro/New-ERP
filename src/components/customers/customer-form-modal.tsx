@@ -99,7 +99,7 @@ export function CustomerFormModal({ onSuccess, onClose }: CustomerFormModalProps
       // 3. Dynamic Fallback for multi-word countries (e.g. "South Korea" -> SK, "Sri Lanka" -> SL)
       const words = countryRaw.split(/\s+/).filter(Boolean);
       if (words.length >= 2) {
-        countryTag = words.map((w) => w[0]).join('').replace(/[^A-Z]/gi, '').toUpperCase().slice(0, 3);
+        countryTag = words.map((w: string) => w[0]).join('').replace(/[^A-Z]/gi, '').toUpperCase().slice(0, 3);
       }
 
       // 4. Fallback for single unknown word: take first 3 clean letters

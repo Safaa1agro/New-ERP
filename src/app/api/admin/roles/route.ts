@@ -39,7 +39,7 @@ export async function GET() {
                                                                             return NextResponse.json({ error: 'Designation name is required' }, { status: 400 });
                                                                               }
 
-                                                                                const { data, error } = await supabase
+                                                                                const { data, error } = await (supabase as any)
                                                                                     .from('roles')
                                                                                         .insert([{ name, description }])
                                                                                             .select()
@@ -78,7 +78,7 @@ export async function GET() {
                                                                                                                                                                   permission_id: pId,
                                                                                                                                                                       }));
 
-                                                                                                                                                                          const { error: insertErr } = await supabase
+                                                                                                                                                                          const { error: insertErr } = await (supabase as any)
                                                                                                                                                                                 .from('role_permissions')
                                                                                                                                                                                       .insert(newMappings);
 

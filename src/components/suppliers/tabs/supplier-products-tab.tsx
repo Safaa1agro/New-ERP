@@ -6,9 +6,15 @@ import { SupplierProductModal } from '../supplier-product-modal';
 
 interface SupplierProductsTabProps {
   supplierId: string;
+  products?: any[];
+  onRefresh?: () => void;
 }
 
-export function SupplierProductsTab({ supplierId }: SupplierProductsTabProps) {
+export function SupplierProductsTab({
+  supplierId,
+  products: initialProducts,
+  onRefresh,
+}: SupplierProductsTabProps) {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
