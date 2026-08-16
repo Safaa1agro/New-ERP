@@ -145,7 +145,7 @@ const regenerateSku = () => {
       } else {
         reset({
           ...defaultFormValues,
-          sku: generateSku('', ''),
+          sku: generateSku(''),
         });
       }
       setActiveTab('general');
