@@ -549,7 +549,7 @@ const regenerateSku = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-slate-300 mb-1">Boxes per Pallet *</label>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">Units per Pallet / ULD *</label>
                     <input
                       type="number"
                       {...register('packaging.boxes_per_pallet', { valueAsNumber: true })}
@@ -558,7 +558,7 @@ const regenerateSku = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-slate-300 mb-1">Net Weight (KG) *</label>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">Unit Net Weight (KG) *</label>
                     <input
                       type="number"
                       step="0.01"
@@ -568,7 +568,7 @@ const regenerateSku = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-slate-300 mb-1">Gross Weight (KG) *</label>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">Unit Gross Weight (KG) *</label>
                     <input
                       type="number"
                       step="0.01"
@@ -578,7 +578,7 @@ const regenerateSku = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-slate-300 mb-1">Tare Weight (KG)</label>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">Unit Tare Weight (KG)</label>
                     <input
                       type="number"
                       step="0.01"
@@ -588,7 +588,7 @@ const regenerateSku = () => {
                   </div>
 
                   <div className="md:col-span-3">
-                    <label className="block text-xs font-medium text-slate-300 mb-1">Box Dimensions (L x W x H cm)</label>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">Unit Dimensions (L x W x H cm)</label>
                     <div className="flex gap-2">
                       <input
                         type="number"
@@ -624,9 +624,9 @@ const regenerateSku = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="bg-slate-950/60 p-3.5 rounded-xl border border-blue-500/20">
                     <label className="block text-xs font-semibold text-blue-400 mb-1 flex items-center gap-1">
-                      <Ship className="w-3.5 h-3.5" /> 20ft Reefer Container
+                      <Ship className="w-3.5 h-3.5" /> 20ft Container (Reefer/General)
                     </label>
-                    <p className="text-[10px] text-slate-500 mb-2">Standard capacity: ~10 Pallets (~10-12 Tons)</p>
+                    <p className="text-[10px] text-slate-500 mb-2">Standard capacity: ~10-12 Pallets / (~25-32 CBM) / (~12-27 Tons)</p>
                     <div className="space-y-1">
                       <label className="block text-[11px] text-slate-300">Pallets per 20ft Reefer</label>
                       <input
@@ -640,9 +640,9 @@ const regenerateSku = () => {
 
                   <div className="bg-slate-950/60 p-3.5 rounded-xl border border-blue-500/20">
                     <label className="block text-xs font-semibold text-blue-400 mb-1 flex items-center gap-1">
-                      <Ship className="w-3.5 h-3.5" /> 40ft HC Reefer Container
+                      <Ship className="w-3.5 h-3.5" /> 40ft Container (Reefer/General/HC)
                     </label>
-                    <p className="text-[10px] text-slate-500 mb-2">Standard capacity: ~20 Pallets (~20-22 Tons)</p>
+                    <p className="text-[10px] text-slate-500 mb-2">Standard capacity: ~20-22 Pallets / (~58-76 CBM) / (~20-28 Tons)</p>
                     <div className="space-y-1">
                       <label className="block text-[11px] text-slate-300">Pallets per 40ft Reefer</label>
                       <input
@@ -656,9 +656,9 @@ const regenerateSku = () => {
 
                   <div className="bg-slate-950/60 p-3.5 rounded-xl border border-sky-500/20">
                     <label className="block text-xs font-semibold text-sky-400 mb-1 flex items-center gap-1">
-                      <Plane className="w-3.5 h-3.5" /> Air Cargo Consignment
+                      <Plane className="w-3.5 h-3.5" /> Air Cargo ULD (Container/Pallet)
                     </label>
-                    <p className="text-[10px] text-slate-500 mb-2">Airway batch payload capability (Tons)</p>
+                    <p className="text-[10px] text-slate-500 mb-2">Standard capacity: (~1. 5-68 CBM) (~0.9-11 Ton)</p>
                     <div className="space-y-1">
                       <label className="block text-[11px] text-slate-300">Air Batch Weight (Tons)</label>
                       <input
